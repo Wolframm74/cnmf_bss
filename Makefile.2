@@ -1,0 +1,326 @@
+MEXSUFFIX = mexa64
+IX= mexa64
+#MATLABHOME = /usr/local/MATLAB/R2013a
+MATLABHOME = /usr/local/MATLAB/MATLAB_Production_Server/R2013a
+MEX=g++
+MEXCXX=echo
+CXX=g++
+
+CFLAGS = -fPIC -pthread -DMATLAB_MEX_FILE -ansi -D_GNU_SOURCE -fno-omit-frame-pointer -pthread -O3 -DNDEBUG
+
+CXX=g++
+
+ARMA_DIR=/home/tung/Documents/School/thesis2/mycode/libs
+
+MEX_DIR=../mex
+#I think this will get the name of the folder the Makefile is currently in. 
+
+HELPER_MODULES_DIR=$(MEX_DIR)/helper_modules
+
+INCLUDE = -I $(ARMA_DIR)/armadillo-9.200.5/include/ -I $(ARMA_DIR)/armadillo-9.200.5/mex_interface -I $(MEX_DIR)/include -I $(HELPER_MODULES_DIR)/include
+#-I../openblas_install/include/
+
+INCLUDE_MEX = -I$(MATLABHOME)/extern/include
+#
+
+MEXFLAGS =  -shared -Wl,--no-undefined -Wl,-rpath-link,$(MATLABHOME)/bin/glnxa64 -L$(MATLABHOME)/bin/glnxa64 -lmx -lmex -lmat -lm -lut -leng
+#
+
+CXXFLAGS = -c -Wall -g -DARMA_BLAS_LONG -std=c++11 -mcmodel=medium
+#-v
+
+#$(DEBUG) $(FINAL) $(OPT) $(EXTRA_OPT)
+
+LINKFLAGS = -pthread
+#-v
+#-u mexFunction -Wl,-e,mexFunction
+
+STATIC_LIBS = -lopenblas
+
+#LIBS = -llapack
+
+#try setting LIBS to what I think are MATLAB's internal LAPACK and BLAS libs
+LIBS= -lmwlapack -lmwblas -lpthread
+
+SEARCH_DIRS = -L /home/tung/Documents/openblas_install/lib/
+
+UPDATE_MODULES_DIR=$(MEX_DIR)/separate_cpp_files
+
+all: nguyen_2015_mex
+
+COMPLEX_ARGUMENT_COST_M1_INCLUDE_FILES = $(HELPER_MODULES_DIR)/include/complex_argument_costfun_m1.hpp
+
+COMPLEX_ARGUMENT_COST_M2_INCLUDE_FILES = $(HELPER_MODULES_DIR)/include/complex_argument_costfun_m2.hpp
+
+COMPLEX_ARGUMENT_COST_M3_INCLUDE_FILES = $(HELPER_MODULES_DIR)/include/complex_argument_costfun_m3.hpp
+
+COMPLEX_ARGUMENT_COST_M4_INCLUDE_FILES = $(HELPER_MODULES_DIR)/include/complex_argument_costfun_m4.hpp
+
+INCLUDE_FILES= $(MEX_DIR)/include/local_inc.hpp $(MEX_DIR)/include/matrix_dimensions.hpp $(MEX_DIR)/include/multiplicative_outputs_api.hpp $(MEX_DIR)/include/separate_cpp_files.hpp $(HELPER_MODULES_DIR)/include/Phi_S_update_extra.hpp $(HELPER_MODULES_DIR)/include/Vkn_update_extra.hpp $(HELPER_MODULES_DIR)/include/Ylk_update_extra.hpp $(HELPER_MODULES_DIR)/include/Tfk_update_extra.hpp $(HELPER_MODULES_DIR)/include/Zol_update_extra.hpp $(HELPER_MODULES_DIR)/include/Zok_update_extra.hpp $(HELPER_MODULES_DIR)/include/cluster_pullup.hpp $(HELPER_MODULES_DIR)/include/k_means_clustering.hpp $(HELPER_MODULES_DIR)/include/tdoa_update_m1.hpp $(HELPER_MODULES_DIR)/include/tdoa_update_m2.hpp $(HELPER_MODULES_DIR)/include/tdoa_update_m3.hpp $(HELPER_MODULES_DIR)/include/Fevotte_cost_function_m1.hpp $(HELPER_MODULES_DIR)/include/Fevotte_cost_function_m2_helper_funs.hpp $(HELPER_MODULES_DIR)/include/Fevotte_EM_update_m1.hpp $(HELPER_MODULES_DIR)/include/beamforming_update_m1.hpp $(COMPLEX_ARGUMENT_COST_M1_INCLUDE_FILES) $(COMPLEX_ARGUMENT_COST_M2_INCLUDE_FILES) $(COMPLEX_ARGUMENT_COST_M3_INCLUDE_FILES) $(COMPLEX_ARGUMENT_COST_M4_INCLUDE_FILES) $(HELPER_MODULES_DIR)/include/complex_argument_interchannel_clustering_m1.hpp $(HELPER_MODULES_DIR)/include/Sawada_source_reconstruction_m1.hpp $(HELPER_MODULES_DIR)/include/Compute_deltas.hpp
+#$(HELPER_MODULES_DIR)/include/covariance_cost_update.hpp
+#$(HELPER_MODULES_DIR)/include/hfk_Af_LS_estimator_update.hpp
+
+#$(HELPER_MODULES_DIR)/include/Phi_S_update_extra.hpp
+
+algorithm_entry_mex.o: algorithm_entry_mex.cpp $(INCLUDE_FILES)
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 
+
+Xhat_obj.o: $(UPDATE_MODULES_DIR)/Xhat_update.cpp $(INCLUDE_FILES)
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 
+
+W_obj.o: $(UPDATE_MODULES_DIR)/W_update.cpp $(INCLUDE_FILES)
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 
+
+Phi_S_obj.o: $(UPDATE_MODULES_DIR)/Phi_S_update.cpp $(INCLUDE_FILES)
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 	
+
+T_obj.o: $(UPDATE_MODULES_DIR)/T_update.cpp $(INCLUDE_FILES)
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 
+
+V_obj.o: $(UPDATE_MODULES_DIR)/V_update.cpp $(INCLUDE_FILES)
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 
+
+Z_obj.o: $(UPDATE_MODULES_DIR)/Z_update.cpp $(INCLUDE_FILES)
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 
+
+Y_obj.o: $(UPDATE_MODULES_DIR)/Y_update.cpp $(INCLUDE_FILES)
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 
+
+update_engines.o: update_engines.cpp $(INCLUDE_FILES)
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 
+
+helper_funs.o: helper_funs.cpp $(INCLUDE_FILES)
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 
+
+normalize_funs.o: normalize_funs.cpp $(INCLUDE_FILES)
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 	
+
+plot_and_update.o: plot_and_update.cpp $(INCLUDE_FILES)
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 	
+
+Z_Y_cluster_obj.o: $(UPDATE_MODULES_DIR)/Z_Y_cluster_update.cpp $(INCLUDE_FILES)
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 	
+
+VVt_ZtZ_YYt_update_wrappers_obj.o: $(UPDATE_MODULES_DIR)/VVt_ZtZ_YYt_update_wrappers.cpp $(INCLUDE_FILES)
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 	
+
+##HELPER MODULES##############################################################
+
+#Phi_S_update_extra
+Phi_S_update_extra.o: $(HELPER_MODULES_DIR)/Phi_S_update_extra/Phi_S_update_extra.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 
+
+Vnk_update_Phi_S.o: $(HELPER_MODULES_DIR)/Phi_S_update_extra/Vnk_update_Phi_S.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 	
+
+#Phi_S_update_extra
+Vkn_update_extra.o: $(HELPER_MODULES_DIR)/Vkn_update_extra/Vkn_update_extra.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 	
+
+V_kn_weighted_scaling_cols.o: $(HELPER_MODULES_DIR)/Vkn_update_extra/V_kn_weighted_scaling_cols.cpp $(INCLUDE_FILES)
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 
+
+Tfk_update_extra.o: $(HELPER_MODULES_DIR)/Tfk_update_extra/Tfk_update_extra.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 		
+
+#Zok_update_extra
+Zok_Ylk_update_extra.o: $(HELPER_MODULES_DIR)/Zok_update_extra/Zok_Ylk_update_extra.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 		
+
+Zok_Zol_update_extra.o: $(HELPER_MODULES_DIR)/Zok_update_extra/Zok_Zol_update_extra.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 			
+
+Ylk_update_extra.o: $(HELPER_MODULES_DIR)/Ylk_update_extra/Ylk_update_extra.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 	
+
+Y_lk_weighted_scaling_cols.o: $(HELPER_MODULES_DIR)/Ylk_update_extra/Y_lk_weighted_scaling_cols.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 	
+
+Zol_update_extra.o: $(HELPER_MODULES_DIR)/Zol_update_extra/Zol_update_extra.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 		
+
+Z_ol_weighted_scaling_rows.o: $(HELPER_MODULES_DIR)/Zol_update_extra/Z_ol_weighted_scaling_rows.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 			
+
+cluster_pullup.o: $(HELPER_MODULES_DIR)/Cluster_pullup_functions/cluster_pullup.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 		
+
+k_means_clustering.o: $(HELPER_MODULES_DIR)/k_means_clustering/k_means_modules.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 			
+
+tdoa_update_m1.o: $(HELPER_MODULES_DIR)/TDOA_update_module1/tdoa_update_m1.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 		
+
+tdoa_update_m2.o: $(HELPER_MODULES_DIR)/TDOA_update_module2/tdoa_update_m2.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 				
+
+tdoa_update_m3.o: $(HELPER_MODULES_DIR)/TDOA_update_module3/tdoa_update_m3.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 				
+
+Fevotte_cost_function_m1.o: $(HELPER_MODULES_DIR)/Fevotte_cost_function_module1/Fevotte_cost_function_m1.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 				
+
+Fevotte_cost_function_m2_helper_funs.o: $(HELPER_MODULES_DIR)/Fevotte_cost_function_module1/Fevotte_cost_function_m2_helper_funs.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 					
+
+Fevotte_EM_update_m1.o: $(HELPER_MODULES_DIR)/Fevotte_EM_update_module1/Fevotte_EM_update_m1.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 					
+
+beamforming_update_m1.o: $(HELPER_MODULES_DIR)/BF_update_module1/beamforming_update_m1.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 				
+
+###COMPLEX ARGUMENT INTERCHANNEL CLUSTERING MODULE 1##############################################################
+
+complex_argument_interchannel_clustering_m1_entry.o: $(HELPER_MODULES_DIR)/complex_argument_interchannel_clustering_module1/complex_argument_interchannel_clustering_m1_entry.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 	
+
+complex_argument_interchannel_clustering_m1_lookdirs_search.o: $(HELPER_MODULES_DIR)/complex_argument_interchannel_clustering_module1/complex_argument_interchannel_clustering_m1_lookdirs_search.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 	
+
+###COMPLEX ARGUMENT INTERCHANNEL CLUSTERING MODULE 1 END ##############################################################
+
+###COMPLEX ARGUMENT COST FUNCTION MODULE 1##############################################################
+
+complex_argument_costfun_m1_V_update_2.o: $(HELPER_MODULES_DIR)/complex_argument_costfun_module1/complex_argument_costfun_m1_V_update_2.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 					
+
+complex_argument_costfun_m1_Phi_S_update_2.o: $(HELPER_MODULES_DIR)/complex_argument_costfun_module1/complex_argument_costfun_m1_Phi_S_update_2.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 					
+
+complex_argument_costfun_m1_W_update_2.o: $(HELPER_MODULES_DIR)/complex_argument_costfun_module1/complex_argument_costfun_m1_W_update_2.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 					
+
+Complex_argument_common_module_m1.o: $(HELPER_MODULES_DIR)/complex_argument_costfun_module1/common_module.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 						
+
+COMPLEX_ARGUMENT_COST_M1_OBS = complex_argument_costfun_m1_V_update_2.o complex_argument_costfun_m1_Phi_S_update_2.o complex_argument_costfun_m1_W_update_2.o Complex_argument_common_module_m1.o
+
+###COMPLEX ARGUMENT COST FUNCTION MODULE 1 END ##############################################################
+
+###COMPLEX ARGUMENT COST FUNCTION MODULE 2##############################################################
+
+complex_argument_costfun_m2_V_update_3.o: $(HELPER_MODULES_DIR)/complex_argument_costfun_module2/complex_argument_costfun_m2_V_update_3.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 					
+
+complex_argument_costfun_m2_Phi_S_update_3.o: $(HELPER_MODULES_DIR)/complex_argument_costfun_module2/complex_argument_costfun_m2_Phi_S_update_3.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 					
+
+complex_argument_costfun_m2_W_update_3.o: $(HELPER_MODULES_DIR)/complex_argument_costfun_module2/complex_argument_costfun_m2_W_update_3.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 					
+
+Complex_argument_common_module_m2.o: $(HELPER_MODULES_DIR)/complex_argument_costfun_module2/common_module.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 						
+
+COMPLEX_ARGUMENT_COST_M2_OBS = complex_argument_costfun_m2_W_update_3.o complex_argument_costfun_m2_V_update_3.o complex_argument_costfun_m2_Phi_S_update_3.o Complex_argument_common_module_m2.o
+
+###COMPLEX ARGUMENT COST FUNCTION MODULE 2 END ##############################################################
+
+###COMPLEX ARGUMENT COST FUNCTION MODULE 3 END ##############################################################
+
+###COMPLEX ARGUMENT COST FUNCTION MODULE 3##############################################################
+
+complex_argument_costfun_m3_V_update_4.o: $(HELPER_MODULES_DIR)/complex_argument_costfun_module3/complex_argument_costfun_m3_V_update_4.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 					
+
+COMPLEX_ARGUMENT_COST_M3_OBS = complex_argument_costfun_m3_V_update_4.o 
+
+###COMPLEX ARGUMENT COST FUNCTION MODULE 3 END ##############################################################
+
+###COMPLEX ARGUMENT COST FUNCTION MODULE 4##############################################################
+
+complex_argument_costfun_m4_update_engines.o: $(HELPER_MODULES_DIR)/complex_argument_costfun_module4/complex_argument_costfun_m4_update_engines.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 					
+
+complex_argument_costfun_m4_V_update_5.o: $(HELPER_MODULES_DIR)/complex_argument_costfun_module4/complex_argument_costfun_m4_V_update_5.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 					
+
+complex_argument_costfun_m4_Z_update_5.o: $(HELPER_MODULES_DIR)/complex_argument_costfun_module4/complex_argument_costfun_m4_Z_update_5.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 					
+
+complex_argument_costfun_m4_T_update_5.o: $(HELPER_MODULES_DIR)/complex_argument_costfun_module4/complex_argument_costfun_m4_T_update_5.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 					
+
+complex_argument_costfun_m4_W_channel_a_update_5.o: $(HELPER_MODULES_DIR)/complex_argument_costfun_module4/complex_argument_costfun_m4_W_channel_a_update_5.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 					
+
+complex_argument_costfun_m4_W_channel_b_update_5.o: $(HELPER_MODULES_DIR)/complex_argument_costfun_module4/complex_argument_costfun_m4_W_channel_b_update_5.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 					
+
+complex_argument_costfun_m4_Y_update_5.o: $(HELPER_MODULES_DIR)/complex_argument_costfun_module4/complex_argument_costfun_m4_Y_update_5.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 					
+
+complex_argument_costfun_m4_Phi_S_update_5.o: $(HELPER_MODULES_DIR)/complex_argument_costfun_module4/complex_argument_costfun_m4_Phi_S_update_5.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 									
+
+COMPLEX_ARGUMENT_COST_M4_OBS = complex_argument_costfun_m4_update_engines.o complex_argument_costfun_m4_V_update_5.o complex_argument_costfun_m4_Z_update_5.o complex_argument_costfun_m4_T_update_5.o complex_argument_costfun_m4_W_channel_a_update_5.o complex_argument_costfun_m4_W_channel_b_update_5.o complex_argument_costfun_m4_Y_update_5.o complex_argument_costfun_m4_Phi_S_update_5.o complex_argument_interchannel_clustering_m1_entry.o complex_argument_interchannel_clustering_m1_lookdirs_search.o
+
+###COMPLEX ARGUMENT COST FUNCTION MODULE 4 END ##############################################################
+
+Sawada_source_reconstruction_m1.o: $(HELPER_MODULES_DIR)/Sawada_source_reconstruction_module1/Sawada_source_reconstruction_m1.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 									
+
+Compute_deltas.o: $(HELPER_MODULES_DIR)/compute_update_rule_deltas_and_plot/Compute_deltas.cpp $(INCLUDE_FILES)	
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 									
+
+#covariance_cost_update
+
+# COVARIANCE_COST_UPDATE_OBJS = covariance_common.o covariance_cost_update_engine.o covariance_Y_update.o covariance_Z_update.o 
+
+# covariance_common.o: $(HELPER_MODULES_DIR)/covariance_cost_update/covariance_common.cpp $(INCLUDE_FILES)	
+# 	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 			
+
+# covariance_cost_update_engine.o: $(HELPER_MODULES_DIR)/covariance_cost_update/covariance_cost_update_engine.cpp $(INCLUDE_FILES)	
+# 	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 			
+
+# covariance_Y_update.o: $(HELPER_MODULES_DIR)/covariance_cost_update/covariance_Y_update.cpp $(INCLUDE_FILES)	
+# 	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 			
+
+# covariance_Z_update.o: $(HELPER_MODULES_DIR)/covariance_cost_update/covariance_Z_update.cpp $(INCLUDE_FILES)	
+# 	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 						
+
+#target output file: nguyen_2015_mex
+
+#Zok_sparsity_cost_update
+
+# ZOK_SPARSITY_COST_UPDATE_OBJS = Zok_sparsity_common.o Zok_sparsity_Ylk_update.o Zok_sparsity_Zol_update.o
+
+# Zok_sparsity_common.o: $(HELPER_MODULES_DIR)/Zok_sparsity_cost_update/Zok_sparsity_common.cpp $(INCLUDE_FILES)	
+# 	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 		
+
+# Zok_sparsity_Ylk_update.o: $(HELPER_MODULES_DIR)/Zok_sparsity_cost_update/Zok_sparsity_Ylk_update.cpp $(INCLUDE_FILES)	
+# 	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 			
+
+# Zok_sparsity_Zol_update.o: $(HELPER_MODULES_DIR)/Zok_sparsity_cost_update/Zok_sparsity_Zol_update.cpp $(INCLUDE_FILES)	
+# 	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 				
+
+#hfk_Af_LS_estimator_update
+
+# HFK_AF_LS_ESTIMATOR_UPDATE_OBJS = hfk_Af_LS_estimator_update_common.o hfk_Af_LS_estimator_update_engine.o hfk_Af_LS_estimator_Wfom_update.o hfk_Af_LS_estimator_Ylk_update.o hfk_Af_LS_estimator_Zol_update.o
+
+# hfk_Af_LS_estimator_update_common.o: $(HELPER_MODULES_DIR)/hfk_Af_LS_estimator_update/hfk_Af_LS_estimator_update_common.cpp $(INCLUDE_FILES)	
+# 	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 		
+
+# hfk_Af_LS_estimator_update_engine.o: $(HELPER_MODULES_DIR)/hfk_Af_LS_estimator_update/hfk_Af_LS_estimator_update_engine.cpp $(INCLUDE_FILES)	
+# 	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 			
+
+# hfk_Af_LS_estimator_Wfom_update.o: $(HELPER_MODULES_DIR)/hfk_Af_LS_estimator_update/hfk_Af_LS_estimator_Wfom_update.cpp $(INCLUDE_FILES)	
+# 	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 				
+
+# hfk_Af_LS_estimator_Ylk_update.o: $(HELPER_MODULES_DIR)/hfk_Af_LS_estimator_update/hfk_Af_LS_estimator_Ylk_update.cpp $(INCLUDE_FILES)	
+# 	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 				
+
+# hfk_Af_LS_estimator_Zol_update.o: $(HELPER_MODULES_DIR)/hfk_Af_LS_estimator_update/hfk_Af_LS_estimator_Zol_update.cpp $(INCLUDE_FILES)	
+# 	$(CXX) $(CXXFLAGS) $(CFLAGS) -o $@ $< $(INCLUDE) $(INCLUDE_MEX) 					
+
+NGUYEN_2015_MEX_OBJS = Xhat_obj.o W_obj.o Phi_S_obj.o T_obj.o V_obj.o Z_obj.o Y_obj.o update_engines.o algorithm_entry_mex.o helper_funs.o normalize_funs.o plot_and_update.o Z_Y_cluster_obj.o VVt_ZtZ_YYt_update_wrappers_obj.o V_kn_weighted_scaling_cols.o Phi_S_update_extra.o Vnk_update_Phi_S.o Vkn_update_extra.o Ylk_update_extra.o Y_lk_weighted_scaling_cols.o Tfk_update_extra.o Zok_Ylk_update_extra.o Zol_update_extra.o Zok_Zol_update_extra.o cluster_pullup.o Z_ol_weighted_scaling_rows.o k_means_clustering.o tdoa_update_m1.o tdoa_update_m2.o tdoa_update_m3.o Fevotte_cost_function_m1.o Fevotte_cost_function_m2_helper_funs.o Fevotte_EM_update_m1.o beamforming_update_m1.o $(COMPLEX_ARGUMENT_COST_M1_OBS) $(COMPLEX_ARGUMENT_COST_M2_OBS) $(COMPLEX_ARGUMENT_COST_M3_OBS) $(COMPLEX_ARGUMENT_COST_M4_OBS) Sawada_source_reconstruction_m1.o Compute_deltas.o
+#$(COVARIANCE_COST_UPDATE_OBJS)
+#$(HFK_AF_LS_ESTIMATOR_UPDATE_OBJS) 
+
+nguyen_2015_mex: $(NGUYEN_2015_MEX_OBJS)
+	$(CXX) $(LINKFLAGS) -o $@.$(MEXSUFFIX) $(NGUYEN_2015_MEX_OBJS) $(LIBS) $(MEXFLAGS) 
+
+.PHONY: clean
+
+clean:
+	rm -f top_down_threaded_mex.$(MEXSUFFIX)
+	rm -f *.o	

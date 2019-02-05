@@ -1,0 +1,330 @@
+#include "local_inc.hpp"
+
+/*0th sum stuff*/
+cube::fixed<F_static, N_static, L_static> outtensor_0th_real_FNL;
+cx_cube::fixed<F_static, N_static, L_static> outtensor_0th_cx_FNL;
+cx_mat::fixed<F_static, K_static> dummy_mat_cx_FK[NUM_WORKER_THREADS]; 
+mat::fixed<K_static, K_static> dummy_mat_outerprod_KK[NUM_WORKER_THREADS]; 
+
+/*1st sum stuff*/
+cube::fixed<F_static, M_static, L_static> outtensor_1st_real_FML;
+cx_cube::fixed<F_static, M_static, L_static> outtensor_1st_cx_FML;
+
+/*2nd sum stuff*/
+cube::fixed<M_static, O_static, L_static> outtensor_2nd_real_MOL;
+cx_cube::fixed<M_static, O_static, L_static> outtensor_2nd_cx_MOL;
+
+/*3rd sum stuff*/
+mat::fixed<O_static, L_static> outmat_3rd_real_OL_den;
+mat::fixed<O_static, L_static> outmat_3rd_real_OL_num;
+cx_mat::fixed<O_static, L_static> outmat_3rd_cx_OL;
+mat::fixed<O_static, L_static> dummy_mat_cumsum_OL; 
+
+static void compute_0th_sum(mat* Y_lk_p, mat* T_fk_p, mat* V_nk_p, cx_cube* Phase_S_fnk_p, int n_index, thread_iter){
+
+/*KxK outer product computation*/	/*fine, I think*/
+dummy_mat_outerprod_KK[thread_iter]=trans((*V_nk_p).submat(n_index,0,n_index,K_static-1))*((*V_nk_p).submat(n_index,0,n_index,K_static-1));
+
+/*outtensor_0th_real_FNL computation*/	/*fine, I think*/
+outtensor_0th_real_FNL.subcube(0, n_index, 0, F_static-1, n_index, L_static-1)=(*T_fk_p)*dummy_mat_outerprod_KK[thread_iter]*trans(*Y_lk_p);
+
+/*outtensor_0th_cx_FNL computation*/	/*Might be ok, since you're only doing elementwise stuff on Phase_S_fnk_p*/
+
+dummy_mat_cx_FK[thread_iter]=((*Phase_S_fnk_p).subcube(0,n_index,0,F_static-1,n_index,K_static-1))%(*T_fk_p);
+
+dummy_mat_cx_FK[thread_iter]=dummy_mat_cx_FK[thread_iter].each_row()%(*V_nk_p).submat(n_index,0,n_index,K_static-1);
+
+outtensor_0th_cx_FNL.subcube(0, n_index, 0, F_static-1, n_index, L_static-1)=dummy_mat_cx_FK[thread_iter]*trans(*Y_lk_p);
+
+}
+
+static void compute_1st_sum(cx_cube* Xhat_low_fnm_p, cx_cube* E_conj_fnm_p, int m_index, int f_index){
+
+/*outtensor_1st_real_FML computation*/
+
+/*Integrate out n. 1xL=1xN*NxL */	/*Xhat_low_fnm_p: represent differently*/	/*If possible, F should be moved to the very far right */
+outtensor_1st_real_FML.subcube(f_index, m_index, 0, f_index, m_index, L_static-1)=(*Xhat_low_fnm_p).subcube(f_index, 0, m_index, f_index, N_static-1, m_index)*outtensor_0th_real_FNL.subcube(f_index,0,0,f_index,N_static-1,L_static-1);	
+
+/*outtensor_1st_cx_FML computation*/	/*E_conj_fnm_p represent differently*/	/*Likewise, shift F */
+outtensor_1st_cx_FML.subcube(f_index, m_index, 0, f_index, m_index, L_static-1)=(*E_conj_fnm_p).subcube(f_index, 0, m_index, f_index, N_static-1, m_index)*outtensor_0th_cx_FNL.subcube(f_index,0,0,f_index,N_static-1,L_static-1);	
+
+}
+
+static void compute_2nd_sum(cube* W_fom_p, cx_cube* W_fom_cx_p, m_index, l_index){
+
+/*Integrate out f, put the result in the real output tensor. 1xO=1xF*FxO*/	/*outtensor_1st_real_FML might be ok as is. W_fom needs to be rep'd differently */
+outtensor_2nd_real_MOL.subcube(m_index,0,l_index,m_index, O_static-1,l_index)=outtensor_1st_real_FML.subcube(0,m_index,l_index, F_static-1,m_index,l_index)*(*W_fom_p).subcube(0,0,m_index,F_static-1, O_static-1,m_index);
+
+/*Integrate out f for the cx output tensor. */	
+outtensor_2nd_cx_MOL.subcube(m_index,0,l_index,m_index, O_static-1,l_index)=outtensor_1st_cx_FML.subcube(0,m_index,l_index, F_static-1,m_index,l_index)*(*W_fom_cx_p).subcube(0,0,m_index,F_static-1, O_static-1,m_index);
+
+}
+
+/*With the exception of the W_fom update, the computation of the 3rd sum involves only M components, and therefore no need to set up a work queue for the computations for this*/
+static void compute_3rd_sum_last_thread(mat* Z_ol_p){
+
+/*Do the sum for m=0:M_static-1*/
+outmat_3rd_real_OL_den=outtensor_2nd_real_MOL.subcube(0,0,0,0,O_static-1,L_static-1)+outtensor_2nd_real_MOL.subcube(1,0,0,1,O_static-1,L_static-1);
+
+outmat_3rd_cx_OL=outtensor_2nd_cx_MOL.subcube(0,0,0,0,O_static-1,L_static-1)+outtensor_2nd_cx_MOL.subcube(1,0,0,1,O_static-1,L_static-1);
+
+outmat_3rd_real_OL_num=outmat_3rd_real_OL_den+real(outmat_3rd_cx_OL);
+
+(*Z_ol_p)=(*Z_ol_p)%(outmat_3rd_real_OL_num/outmat_3rd_real_OL_den);
+
+/*Project Z_ol onto the nonnegative orthant. ie: zero all negative elements*/
+(*Z_ol_p).elem(find((*Z_ol_p)<0)).zeros();
+
+/*Ok. I think this is now fully correct. */
+dummy_mat_cumsum_OL=cumsum((*Z_ol_p), 1);
+
+(*Z_ol_p).each_row()/dummy_mat_cumsum_OL.submat(O_static-1,0,O_static-1,L_static-1);
+
+}
+
+static void Z_0th_sum_start(arg_struct_t* argStruct_p, bool* last_element_p, int thread_iter){
+
+/*Local variables*/
+/*int l_index;*/
+int n_index;
+
+/*bool b_exit_cond_local=false; */
+
+bool compute_flag; 
+/*bool last_element=false;*/
+
+while(threads_while_condition_0th_sum_flag&&(!(*last_element_p))) {		/*Change b_exit_cond_global to b_exit_cond_global_0th_sum?? */
+
+	if (!(*last_element_p)) {	/*Assuming you make the outer while a function of last_element_p, then you can remove this. Can re-enable it if and when you're investigating bugs/debugging. */
+
+	if (check_queue_global_flag){
+
+	/*Semaphore or mutex lock */
+	sem_wait(&queue_sem);
+
+	compute_flag=calculate_queue_index(argStruct_p, &n_index, last_element_p); 
+
+	/*Semaphore or mutex unlock */
+	sem_post(&queue_sem);
+
+	}
+
+	/*if (b_exit_cond_g||last_element*/	
+	if (compute_flag){
+
+	compute_0th_sum(argStruct_p->Y_lk_p, argStruct_p->T_fk_p, argStruct_p->V_nk_p, argStruct_p->Phase_S_fnk_p, n_index, thread_iter);
+
+	}
+	/*end if*/
+
+	if ((!compute_flag)&&(last_element_found_global_flag)){
+
+	/*sem_wait(&sleep_sem). aka sleep. when sem_post() is called from the outside world three times by the last_element==true thread, the three threads that were asleep/blocked, should awake and continue from this point. */
+	sem_wait(&sleep_sem);
+
+	}
+
+	}
+
+	/*If there's anything that would be better off being done, resetting, here as opposed to outside this function, by the last_element==true thread, can catch the thread with an if(){} and make it do something. */
+
+} /*end while*/
+
+}
+
+static void Z_1st_sum_start(arg_struct_t* argStruct_p, bool* last_element_p){
+/*Local variables*/
+/*int l_index;*/
+int m_index;
+int f_index;
+
+/*bool b_exit_cond_local=false; */
+
+bool compute_flag; 
+/*bool last_element=false;*/
+
+while(threads_while_condition_1st_sum_flag&&(!(*last_element_p))) {		/*Change b_exit_cond_global to b_exit_cond_global_0th_sum?? */
+
+	if (!(*last_element_p)) {	/*Assuming you make the outer while a function of last_element_p, then you can remove this. Can re-enable it if and when you're investigating bugs/debugging. */
+
+	if (check_queue_global_flag){
+
+	/*Semaphore or mutex lock */
+	sem_wait(&queue_sem);
+
+	compute_flag=calculate_pair_queue_indices(argStruct_p, &m_index, &f_index, last_element_p); 
+
+	/*Semaphore or mutex unlock */
+	sem_post(&queue_sem);
+
+	}
+
+	/*if (b_exit_cond_g||last_element*/	
+	if (compute_flag){
+
+	compute_1st_sum(argStruct_p->Xhat_low_fnm_p, argStruct_p->E_conj_fnm_p, m_index, f_index);
+
+	}
+	/*end if*/
+
+	if ((!compute_flag)&&(last_element_found_global_flag)){
+
+	/*sem_wait(&sleep_sem). aka sleep. when sem_post() is called from the outside world three times by the last_element==true thread, the three threads that were asleep/blocked, should awake and continue from this point. */
+	sem_wait(&sleep_sem);
+
+	}
+
+	}
+
+	/*If there's anything that would be better off being done, resetting, here as opposed to outside this function, by the last_element==true thread, can catch the thread with an if(){} and make it do something. */
+
+} /*end while*/
+	
+}
+
+static void Z_2nd_sum_start(arg_struct_t* argStruct_p, bool* last_element_p){
+	
+/*Local variables*/
+/*int l_index;*/
+int l_index;	
+int m_index;
+
+/*bool b_exit_cond_local=false; */
+
+bool compute_flag; 
+/*bool last_element=false;*/
+
+while(threads_while_condition_2nd_sum_flag&&(!(*last_element_p))) {		/*Change b_exit_cond_global to b_exit_cond_global_0th_sum?? */
+
+	if (!(*last_element_p)) {	/*Assuming you make the outer while a function of last_element_p, then you can remove this. Can re-enable it if and when you're investigating bugs/debugging. */
+
+	if (check_queue_global_flag){
+
+	/*Semaphore or mutex lock */
+	sem_wait(&queue_sem);
+
+	/*You need to create a different function to calculate a pair of queue indices. And therefore should also pass in f_index here to be updated by the function. */
+	compute_flag=calculate_pair_queue_indices(argStruct_p, &m_index, &l_index, last_element_p); 
+
+	/*Semaphore or mutex unlock. */
+	sem_post(&queue_sem);
+
+	}
+
+	/*if (b_exit_cond_g||last_element*/	
+	if (compute_flag){
+
+	compute_2nd_sum(argStruct_p->W_fom_p, argStruct_p->W_fom_cx_p, m_index, l_index);
+
+	}
+	/*end if*/
+
+	if ((!compute_flag)&&(last_element_found_global_flag)) {
+
+	/*sem_wait(&sleep_sem). aka sleep. when sem_post() is called from the outside world three times by the last_element==true thread, the three threads that were asleep/blocked, should awake and continue from this point. */
+	sem_wait(&sleep_sem);
+
+	}
+
+	}
+
+	/*If there's anything that would be better off being done, resetting, here as opposed to outside this function, by the last_element==true thread, can catch the thread with an if(){} and make it do something. */
+
+} /*end while*/
+	
+}
+
+void* Z_start(void* arg){
+
+
+thread_arg_t* threadArg_p;
+arg_struct_t* argStruct_p;
+
+bool last_element_flag=false; 
+int thread_iter;
+
+/*Cast the void* arg into a arg_struct_t**/
+threadArg_p=(arg_struct_t*)arg;
+argStruct_p=threadArg_p->argStruct_p; 
+thread_iter=threadArg_p->thread_iter; 
+
+Z_0th_sum_start(argStruct_p, &last_element_flag, thread_iter);
+	
+/*Allow the last thread to get to this point, and charge the last thread with the task of re-populating the queue. */	
+
+if (last_element_flag){
+
+/*Repopulate queue wrt M, F*/
+populate_queue_wrt_pair_indices(argStruct_p, M_static, F_static);
+
+/*I think also reset: last_element_found_global_flag to false */
+/*Consider creating a semaphore for this and wrapping it, but for now do without*/
+last_element_found_global_flag=false;
+
+/*Set the threads_while_condition_0th_sum_flag to a state that allows the just awoken threads to break their while loops. */
+/*Wrap this write operation with a semaphore lock.*/
+sem_wait(&threads_while_condition_0th_sum_sem);
+threads_while_condition_0th_sum_flag=false;	
+sem_post(&threads_while_condition_0th_sum_sem);
+
+/*Wake the other threads by calling sem_post() three times. */
+	sem_post(&sleep_sem);
+	sem_post(&sleep_sem);
+	sem_post(&sleep_sem);
+
+} /*endif*/
+
+/*reset last_element_flag to false for all threads*/
+last_element_flag=false;
+
+Z_1st_sum_start(argStruct_p, &last_element_flag);
+
+if (last_element_flag){
+
+/*Repopulate queue wrt M, L */
+populate_queue_wrt_pair_indices(argStruct_p, M_static, L_static);
+
+/*Reset this flag*/
+last_element_found_global_flag=false;
+
+sem_wait(&threads_while_condition_1st_sum_sem);
+threads_while_condition_1st_sum_flag=false;	
+sem_post(&threads_while_condition_1st_sum_sem);
+
+/*Wake up the other threads*/
+	sem_post(&sleep_sem);
+	sem_post(&sleep_sem);
+	sem_post(&sleep_sem);
+
+}
+
+last_element_flag=false; 
+
+Z_2nd_sum_start(argStruct_p, &last_element_flag);
+
+if (last_element_flag){
+
+/*Here is the chance for the last_element thread to do anything serially while 3 of the other 4 threads are currently asleep*/
+compute_3rd_sum_last_thread(argStruct_p->Z_ol_p);
+
+/*Don't repopulate queue */	
+
+/*Reset this flag, although probably unecessary in this case. */
+last_element_found_global_flag=false;
+
+/*Set this flag to false so that sleeping threads can exit their while condition upon awaking. */
+sem_wait(&threads_while_condition_2nd_sum_sem);
+threads_while_condition_2nd_sum_flag=false;	
+sem_post(&threads_while_condition_2nd_sum_sem);
+
+/*Wake up the other threads*/
+	sem_post(&sleep_sem);
+	sem_post(&sleep_sem);
+	sem_post(&sleep_sem);
+
+}
+
+last_element_flag=false; 
+
+	
+}

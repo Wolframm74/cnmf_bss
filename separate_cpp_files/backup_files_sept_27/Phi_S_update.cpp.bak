@@ -1,0 +1,57 @@
+#include "local_inc.hpp"
+
+/*2nd sum stuff*/
+cube::fixed<F_static, N_static, K_static> outtensor_2nd_real_FNK;
+cx_cube::fixed<F_static, N_static, K_static> outtensor_2nd_cx_FNK;
+
+/*output f,n,k related stuff*/
+mat::fixed<F_static, N_static> dummy_mat_real_FN;
+cx_mat::fixed<F_static, N_static> dummy_mat_cx_FN;
+cx_cube::fixed<F_static, N_static, K_static> outtensor_target_cx_FNK;	/*Do a mexCallMATLAB() on this */
+
+static void compute_2nd_sum(cube* Xhat_low_fnm_p, cx_cube* E_conj_fnm_p, int n_index){
+
+int f_index; 
+
+for (f_index=0; f_index<F_static; f_index++){
+
+/*Dimensions of matrix product: 1xK=(1xM)*(MxK) */
+
+outtensor_2nd_real_FNK.subcube(f_index,n_index,0,f_index,n_index,K_static-1)=(*Xhat_low_fnm_p).subcube(f_index,n_index,0,f_index,n_index,M_static-1)*Xhat_outtensor_real_FMK.subcube(f_index,0,0,f_index,M_static-1,K_static-1);
+
+outtensor_2nd_cx_FNK.subcube(f_index,n_index,0,f_index,n_index,K_static-1)=(*E_conj_fnm_p).subcube(f_index,n_index,0,f_index,n_index,M_static-1)*Xhat_outtensor_cx_FMK.subcube(f_index,0,0,f_index,M_static-1,K_static-1);
+
+}
+
+}
+
+static void compute_output_fnk(mat* T_fk_p, mat* V_nk_p, cx_cube* Phase_S_fnk_p, int k_index){
+
+dummy_mat_cx_FN=conj((*Phase_S_fnk_p).subcube(0,0,k_index,F_static-1,N_static-1,k_index))%outtensor_2nd_real_FNK.subcube(0,0,k_index,F_static-1,N_static-1,k_index);
+
+dummy_mat_cx_FN=dummy_mat_cx_FN+outtensor_2nd_cx_FNK.subcube(0,0,k_index,F_static-1,N_static-1,k_index);
+
+dummy_mat_real_FN=(*T_fk_p).submat(0,k_index,F_static-1,k_index)*trans((*V_nk_p).submat(0,k_index,N_static-1,k_index));
+
+/*Need to determine, think about whether or not updating Phase_S_fnk is sufficient for all updates. Or do you actually need it
+in terms of Phi_S_fnk, for some reason? */
+
+/*I think this is fine. Nevermind, I have an argument for why it's not*/
+
+/*Recall that matlab's angle() function operates not just on complex numbers on the unit circle but in the entire complex plane*/
+/*Therefore the angle() function can be seen as discarding the magnitudes of non "unit-length normalized" complex numbers ... */
+
+/*Therefore, an implementation that calls matlab's angle() function vs an implementation that tries to operate directly on Phase_S_fnk (like you are thinking of doing)
+as to my guess, would have some difference in (output) bit exactness for common inputs.
+*/
+
+outtensor_target_cx_FNK.submat(0,0,k_index,F_static-1,N_static-1,k_index)=dummy_mat_real_FN%dummy_mat_cx_FN;
+
+}
+
+void* Phi_S_start(void* arg){
+
+arg_struct_t* argStruct_p;
+
+	
+}

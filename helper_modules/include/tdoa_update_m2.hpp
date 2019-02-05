@@ -1,0 +1,2 @@
+extern void TDOA_update_module2_entry_point1(mxArray *plhs[], const mxArray *prhs[], arg_struct_t* argStruct_p);
+extern void TDOA_update_module2_entry_point2(mxArray *plhs[], const mxArray *prhs[], arg_struct_t* argStruct_p);
